@@ -8,7 +8,7 @@ import zipfile
 # import ner
 from convertPDFToText import convertPDFToText
 from convertDocxToText import convertDocxToText
-
+from subprocess import Popen, PIPE
 
 # from convertRtfToText import convertRtfToText
 
@@ -96,8 +96,8 @@ class Parse():
         rtf_files = glob.glob("resumes/*.rtf")
         text_files = glob.glob("resumes/*.txt")
 
-        #        files = set(doc_files + docx_files + pdf_files + rtf_files + text_files)
-        files = set(docx_files)
+        files = set(doc_files + docx_files + pdf_files + rtf_files + text_files)
+        #files = set(pdf_files)
         files = list(files)
         print("%d files identified" % len(files))
 
@@ -109,16 +109,22 @@ class Parse():
             self.inputString, info['extension'] = self.readFile(f)
             info['fileName'] = f
 
+            print("Tokenizing")
             self.tokenize(self.inputString)
 
+            print("getEmail")
             self.getEmail(self.inputString, info)
 
+            print("getPhone")
             self.getPhone(self.inputString, info)
 
+            print("Tokenizing")
             self.getName(self.inputString, info)
 
+            print("Qualification")
             self.Qualification(self.inputString, info)
 
+            print("getExperience")
             self.getExperience(self.inputString, info, debug=False)
 
             csv = exportToCSV()
@@ -141,14 +147,22 @@ class Parse():
         elif extension == "doc":
             # Run a shell command and store the output as a string
             # Antiword is used for extracting data out of Word docs. Does not work with docx, pdf etc.
+            source = os.path.abspath('.')
+            f = os.path.join(source, fileName)
+            cmd = ['antiword', f]
+            print("file: " + f)
+#            p = Popen(cmd, stdout=PIPE)
+#            stdout, stderr = p.communicate()
+#            return stdout.decode('ascii', 'ignore'), extension
             return \
-            subprocess.Popen(['antiword', fileName], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[
+            subprocess.Popen(['antiword', f], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()[
                 0], extension
         elif extension == "docx":
             try:
                 return convertDocxToText(fileName), extension
-            except:
-                return ''
+            except Exception as e:
+                print("Error: DocxToText, " + str(e))
+                return '', ''
                 pass
         # elif extension == "rtf":
         #    try:
@@ -162,8 +176,9 @@ class Parse():
             # return os.system(("ps2ascii %s") (fileName))
             try:
                 return convertPDFToText(fileName), extension
-            except:
-                return ''
+            except Exception as e:
+                print("Error: PDFToText, " + str(e))
+                return '', ''
                 pass
         else:
             print('Unsupported format')
